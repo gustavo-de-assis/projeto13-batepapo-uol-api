@@ -21,8 +21,8 @@ app.get("/participants", (req, res) => {
     db.collection("participants")
     .find()
     .toArray()
-    .then((participants) =>{
-        res.send(participants).status(200)
+    .then((part) =>{
+        res.send(part).status(200)
         }
     )
     .catch((err)=>{
@@ -34,7 +34,17 @@ app.post("/participants", (req, res) => {
 
 })
 app.get("/messages", (req, res) => {
-
+    db.collection("messages")
+    .find()
+    .toArray()
+    .then((msg) =>{
+        res.send(msg).status(200)
+        }
+    )
+    .catch((err)=>{
+        res.sendStatus(500);
+        }
+    )
 })
 app.post("/messages", (req, res) => {
 
