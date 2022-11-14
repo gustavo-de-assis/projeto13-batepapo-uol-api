@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import joi from "joi";
 import dotenv from "dotenv";
 
 import dayjs from "dayjs";
 
 const app = express();
+
 
 dotenv.config();
 
@@ -161,6 +162,14 @@ setInterval(async () => {
     const toRemove = participants.filter((p) => (Date.now() - p.lastStatus >= 10000));
 
     console.log(toRemove);
+
+    toRemove.forEach((p)=> {
+
+        db.collection("participants").deleteOne({"_id": p._id});
+    }
+    );
+
+    console.log(participants)
 
 },15000)
 
