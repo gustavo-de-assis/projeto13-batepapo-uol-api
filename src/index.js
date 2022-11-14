@@ -48,7 +48,6 @@ app.get("/participants", async (req, res) => {
 })
 
 app.post("/participants", async (req, res) => {
-    //const participant = {...req.body, lastStatus: Date.now()};
     loggedUser = {...req.body, lastStatus: Date.now()};
     
     const validation = userSchema
@@ -87,7 +86,6 @@ app.post("/participants", async (req, res) => {
 
 app.get("/messages", async (req, res) => {
     const { limit } = req.query;
-    //const { user }  = req.headers;
 
     try {
         
