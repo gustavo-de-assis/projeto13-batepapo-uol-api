@@ -23,11 +23,11 @@ const userSchema = joi.object({
 })
 
 const messageSchema = joi.object({
-    from: joi.string().required(),
+   // from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
     type: joi.string().valid('message','private_message').required(),
-    time: joi.date().required()
+    //time: joi.date().required()
 })
 
 mongoClient
@@ -90,8 +90,6 @@ app.get("/messages", async (req, res) => {
     const { limit } = req.query;
     const { user }  = req.headers;
 
-    
-
     try {
         
         const messages = await db.collection("messages").find().toArray()
@@ -112,21 +110,29 @@ app.get("/messages", async (req, res) => {
 
     }
     catch (err) {
-        res.sendStatus(500)
+        res.send("Bad request").status(500)
     }
 })
 
 app.post("/messages", async (req, res) => {
 
+    const { user } = req.headers;
+
+    if(user !== loggedUser.name){
+        res.status(404).send("User not found!");
+        return;
+    }
+
     
-    const message = {... req.body, from: loggedUser.name, time: dayjs().format("HH:mm:ss")};
-    
-    const validation = messageSchema.validate(message, { abortEarly: true });
+    const validation = messageSchema.validate(req.body, { abortEarly: true });
     
     if(validation.error){
         res.sendStatus(422);
         return;
     }
+    
+    const message = {...req.body, from: user, time: dayjs().format("HH:mm:ss")};
+    console.log(message);
     
     try {
         await db.collection("messages").insertOne(message)
