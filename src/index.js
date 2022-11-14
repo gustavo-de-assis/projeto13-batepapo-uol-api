@@ -47,18 +47,25 @@ app.get("/participants", async (req, res) => {
 app.post("/participants", async (req, res) => {
     const participant = req.body;
     
-    console.log(participant);
+    const validation = userSchema
+    .validate(participant, { abortEarly: true });
+    
+    if(validation.error){
+        res.sendStatus(422);
+        return;
+    }
 
     
-    /* const signedUser = await db.participants.findOne(participant);
+    const signedUser = await db.collection("participants").findOne({nome: participant.nome});
     if(signedUser){
+        console.log("Usuário já cadastrado!");
         res.status(409).send("User already exists");
         return;
-    } */
+    } 
    
     try {
         await db.collection("participants").insertOne(participant)
-        res.status(201).send("Success! User logged in!")
+        res.status(201).send("Created!")
     }
     catch(err) {
         res.status(500).send("Error! Couldn't create User!")
