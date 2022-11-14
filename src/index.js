@@ -5,23 +5,17 @@ import joi from "joi";
 import dotenv from "dotenv";
 
 import dayjs from "dayjs";
-import customParseFormat from 'dayjs/plugin/customParseFormat.js';
-import utc from 'dayjs/plugin/utc.js';
-
 
 const app = express();
 
 dotenv.config();
-
-dayjs.extend(utc)
-dayjs.extend(customParseFormat);
-dayjs().format();
 
 app.use(cors());
 app.use(express.json());
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
+let loggedUser;
 
 const userSchema = joi.object({
     name: joi.string().required(),
@@ -32,7 +26,8 @@ const messageSchema = joi.object({
     from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().valid('message','private_message').required()
+    type: joi.string().valid('message','private_message').required(),
+    time: joi.date().required()
 })
 
 mongoClient
@@ -54,10 +49,11 @@ app.get("/participants", async (req, res) => {
 })
 
 app.post("/participants", async (req, res) => {
-    const participant = {...req.body, lastStatus: Date.now()};
+    //const participant = {...req.body, lastStatus: Date.now()};
+    loggedUser = {...req.body, lastStatus: Date.now()};
     
     const validation = userSchema
-    .validate(participant, { abortEarly: true });
+    .validate(loggedUser, { abortEarly: true });
     
     if(validation.error){
         res.sendStatus(422);
@@ -65,7 +61,7 @@ app.post("/participants", async (req, res) => {
     }
 
     
-    const signedUser = await db.collection("participants").findOne({name: participant.name});
+    const signedUser = await db.collection("participants").findOne({name: loggedUser.name});
     if(signedUser){
         console.log("Usuário já cadastrado!");
         res.status(409).send("User already exists");
@@ -74,14 +70,14 @@ app.post("/participants", async (req, res) => {
    
     try {
         const statusMessage = {
-            from: participant.name,
+            from: loggedUser.name,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
-            time: dayjs('1970-00-00', 'HH:MM:SS')
+            time: dayjs().format('HH:mm:ss')
         }
 
-        await db.collection("participants").insertOne(participant)
+        await db.collection("participants").insertOne(loggedUser)
         await db.collection("messages").insertOne(statusMessage)
         res.status(201).send("Created!")
     }
@@ -91,9 +87,28 @@ app.post("/participants", async (req, res) => {
 })
 
 app.get("/messages", async (req, res) => {
+    const { limit } = req.query;
+    const { user }  = req.headers;
+
+    
+
     try {
+        
         const messages = await db.collection("messages").find().toArray()
-        res.send(messages).status(200)
+        
+        messages = {...messages.filter((msg)=> {
+            msg.from === user || 
+            msg.to === user || 
+            msg.type === 'message' ||
+            msg.type === 'status'
+        })}
+
+
+        if(limit >= 1){
+            res.send(messages.filter((message, i) => i <= limit)).status(200)
+        }else{
+            res.send(messages).status(200)
+        }
 
     }
     catch (err) {
@@ -102,7 +117,9 @@ app.get("/messages", async (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    const message = {... req.body, from: ""};
+
+    
+    const message = {... req.body, from: loggedUser.name, time: dayjs().format("HH:mm:ss")};
     
     const validation = messageSchema.validate(message, { abortEarly: true });
     
@@ -123,5 +140,7 @@ app.post("/messages", async (req, res) => {
 app.post("/status", (req, res) => {
 
 })
+
+
 
 app.listen(5000, ()=>{console.log("Server running at port 5000")});
