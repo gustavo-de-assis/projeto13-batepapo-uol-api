@@ -23,11 +23,9 @@ const userSchema = joi.object({
 })
 
 const messageSchema = joi.object({
-   // from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
     type: joi.string().valid('message','private_message').required(),
-    //time: joi.date().required()
 })
 
 mongoClient
@@ -88,29 +86,31 @@ app.post("/participants", async (req, res) => {
 
 app.get("/messages", async (req, res) => {
     const { limit } = req.query;
-    const { user }  = req.headers;
+    //const { user }  = req.headers;
 
     try {
         
         const messages = await db.collection("messages").find().toArray()
-        
-        messages = {...messages.filter((msg)=> {
-            msg.from === user || 
-            msg.to === user || 
+        const obj = messages.filter((msg) => {
+            if(msg.from === loggedUser.name || 
+            msg.to === loggedUser.name || 
             msg.type === 'message' ||
-            msg.type === 'status'
-        })}
-
+            msg.type === 'status'){
+                return msg;
+            }
+        })
+        
+        console.log(obj)
 
         if(limit >= 1){
-            res.send(messages.filter((message, i) => i <= limit)).status(200)
+            res.send(obj.filter((message, i) => i <= limit)).status(200)
         }else{
-            res.send(messages).status(200)
+            res.send(obj).status(200)
         }
 
     }
     catch (err) {
-        res.send("Bad request").status(500)
+        res.sendStatus(500)
     }
 })
 
@@ -143,9 +143,26 @@ app.post("/messages", async (req, res) => {
     }
 })
 
-app.post("/status", (req, res) => {
+app.post("/status", async (req, res) => {
+    const { user }  = req.headers;
+    const signedUser = await db.collection("participants").findOne({name: user});
 
+    if(!signedUser){
+        res.sendStatus(404);
+        return;
+    } else{
+        signedUser.lastStatus = Date.now();
+        res.sendStatus(200);
+    }
 })
+
+setInterval(async () => {
+    const participants = await db.collection("participants").find().toArray()
+    const toRemove = participants.filter((p) => (Date.now() - p.lastStatus >= 10000));
+
+    console.log(toRemove);
+
+},15000)
 
 
 
